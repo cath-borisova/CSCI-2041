@@ -1,0 +1,209 @@
+<!-- Created by Bracy 0.4 on Sunday, November 28, 2021 at 4:48 PM CST -->
+<html>
+ <head>
+  <title>
+   CSci 2041 Computer Laboratory 11
+  </title>
+  <style>
+   a:active
+    { color: purple;
+      font-weight: bold;
+      text-decoration: none }
+   a:link
+    { color: blue;
+      font-weight: bold;
+      text-decoration: none }
+   a:visited
+    { color: purple;
+      font-weight: bold;
+      text-decoration: none }
+   hr
+    { background-color: black;
+      border: none;
+      color: black;
+      height: 1px }
+   table
+    { border-collapse: collapse }
+  </style>
+ </head>
+ <body bgcolor="#FFFFFF">
+  <p align="center">
+   <b>Computer Laboratory 11</b>
+   <br />
+   <b>CS<small>CI</small> 2041: Advanced Programming</b>
+   <br />
+   <b>November 29&#8211;30, 2021</b>
+  </p>
+  <p>
+   <b>0. Introduction.</b>
+  </p>
+  <p align="justify">
+   In the past few lectures, we&rsquo;ve discussed writing an interpreter in
+   OCaml for a side-effect-free subset of Lisp, called <i>Pure Lisp.</i>
+   For this laboratory assignment, you&rsquo;ll investigate a potentially
+   efficient way that the interpreter could represent its environments. This
+   lab is shorter than most others you have seen.
+  </p>
+  <p>
+   <b>1. Theory.</b>
+  </p>
+  <p align="justify">
+   An <i>environment</i> is a data structure used by a programming
+   language interpreter: it maps <i>names</i> to their <i>values,</i>
+   called <i>bindings.</i> The Pure Lisp interpreter discussed in the
+   lectures represents an environment as an OCaml list of 2-tuples, like this.
+  </p>
+  <blockquote>
+   <p>
+    <tt>[(</tt><i>n</i><sub>0</sub><tt>,</tt>
+    <i>b</i><sub>0</sub><tt>);
+    (</tt><i>n</i><sub>1</sub><tt>,</tt>
+    <i>b</i><sub>1</sub><tt>)&nbsp;</tt> &#8943;<tt>;
+    (</tt><i>n<sub>j</sub></i><sub>&#8722;1</sub><tt>,</tt>
+    <i>b<sub>j</sub></i><sub>&#8722;1</sub><tt>)]</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   Here the subscripted <i>n</i>&rsquo;s are OCaml strings that represent
+   names, and the subscripted <i>b</i>&rsquo;s are OCaml objects that
+   represent the bindings of those names. To find the binding of a name
+   <i>n</i>, the Pure Lisp interpreter searches this list until it finds
+   the first 2-tuple with <i>n</i> on its left side. The binding of
+   <i>n</i> is then on the right side of that tuple. This takes
+   <i>O</i>(<i>j</i>) string comparisons, on average.
+   <br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Is it possible to search faster? One
+   possibility uses a list of binary search trees
+   (<small>BST</small>&rsquo;s) instead of 2-tuples. If each
+   <small>BST</small> is written as a subscripted <i>t</i>, then the
+   environment looks like this.
+  </p>
+  <blockquote>
+   <p>
+    <tt>[</tt><i>t</i><sub>0</sub><tt>;</tt>
+    <i>t</i><sub>1</sub><tt>&nbsp;</tt> &#8943;<tt>;</tt>
+    <i>t<sub>k</sub></i><sub>&#8722;1</sub><tt>]</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   Each <small>BST</small> associates many distinct names with their
+   bindings. As a result, the length of this list, <i>k</i>, should be
+   much less than that of the original list, <i>j</i>. Also, if the
+   <small>BST</small>&rsquo;s in the list are approximately balanced, then
+   each can be searched in logarithmic time&#8212;faster than the linear time
+   that was needed for a list of 2-tuples.
+   <br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; This representation is perhaps a better match
+   for the needs of the Pure Lisp interpreter. To see why, suppose that we call
+   a function <i>f</i> with <i>m</i> arguments (the subscripted
+   <i>a</i>&rsquo;s) like this.
+  </p>
+  <blockquote>
+   <p>
+    <tt>(</tt><i>f a</i><sub>0</sub>
+    <i>a</i><sub>1</sub> &#8943;
+    <i>a<sub>m</sub></i><sub>&#8722;1</sub><tt>)</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   To execute this call, the interpreter must bind each of
+   <i>f</i>&rsquo;s parameter names to the value of its corresponding
+   argument. It might do that by creating a <small>BST</small> that stores
+   the bindings of those parameter names, then adding the
+   <small>BST</small> to the front of the list that represents the
+   environment. The body of the function <i>f</i> can then find the
+   bindings of its parameter names in the environment. When the call to
+   <i>f</i> returns, it can simply remove the <small>BST</small> from
+   the front of the list, restoring the environment to what it was before the
+   call.
+  </p>
+  <p>
+   <b>2. Implementation.</b>
+  </p>
+  <p align="justify">
+   This laboratory assignment will deal only with finding the value of a name
+   in an environment represented as a list of <small>BST</small>&rsquo;s.
+   A future lecture will discuss how functions are called, and how environments
+   for those calls are created.
+   <br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The following OCaml type definition describes
+   a <small>BST</small> whose keys are strings and whose values are
+   instances of the type <tt>'value.</tt> It defines two
+   constructors, <tt>BSTEmpty</tt> and <tt>BSTNode</tt>. (You saw
+   something like this in Lab 3.)
+  </p>
+  <blockquote>
+   <p>
+    <tt>type&nbsp;'value&nbsp;bst&nbsp;=&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;BSTEmpty&nbsp;|&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;BSTNode&nbsp;of&nbsp;(string&nbsp;*&nbsp;'value&nbsp;*&nbsp;'value&nbsp;bst&nbsp;*&nbsp;'value&nbsp;bst)&nbsp;;;</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   Also, this OCaml type definition defines <tt>layers</tt>, a list of the
+   <small>BST</small>&rsquo;s from the previous definition.
+  </p>
+  <blockquote>
+   <p>
+    <tt>type&nbsp;'value&nbsp;layers&nbsp;=&nbsp;('value&nbsp;bst)&nbsp;list&nbsp;;;</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   Finally, this OCaml definition defines <tt>LayerError</tt>, which is
+   <tt>raise</tt>&rsquo;d if the binding of a name can&rsquo;t be found.
+   The string is an error message.
+  </p>
+  <blockquote>
+   <p>
+    <tt>exception&nbsp;LayerError&nbsp;of&nbsp;string&nbsp;;;</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   Using these, you must write a function called <tt>layerGet</tt>, which
+   takes two parameters, <tt>layers</tt> and <tt>name</tt>. The
+   parameter <tt>layers</tt> is an instance of the type
+   <tt>layers</tt>, a list of <small>BST</small>&rsquo;s. The
+   parameter <tt>name</tt> is a string that represents a name.
+   <br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The function <tt>layerGet</tt> must
+   search the <small>BST</small>&rsquo;s in <tt>layers</tt>, in order
+   of their appearance, until it finds one that has <tt>name</tt> as a
+   key. It must then return the object (the binding of <tt>name</tt>)
+   associated with that key. If it cannot find <tt>name</tt> in any
+   <tt>bst</tt> from <tt>layers</tt>, then it must raise the
+   exception <tt>LayerError</tt>.
+   <br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Here are some hints. You might define a
+   helper for <tt>layerGet</tt> called <tt>layerGetting</tt> that
+   takes two arguments: the first <small>BST</small> in
+   <tt>layers</tt>, and the <small>BST</small>&rsquo;s that follow it
+   in <tt>layers</tt>. The helper first searches the first
+   <small>BST</small> for <tt>name</tt>. If it finds
+   <tt>name</tt>, then it returns <tt>name</tt>&rsquo;s binding from
+   the <small>BST</small>. If it can&rsquo;t find <tt>name</tt>, then
+   it calls itself recursively. If it runs out of
+   <small>BST</small>&rsquo;s to search, then it raises
+   <tt>LayerError</tt>. Note that both <tt>layerGet</tt> and
+   <tt>layerGetting</tt> can be tail-recursive.
+  </p>
+  <p>
+   <b>3. Deliverables.</b>
+  </p>
+  <p align="justify">
+   The file
+   <a href="tests11.ml">
+    <tt>tests11.ml</tt>
+   </a>
+   contains some tests. Insert your code into this file, and then run it with
+   OCaml. When you think your code is correct, submit the file with your code
+   in it. If you don&rsquo;t know how and where to submit your file, then ask
+   your lab TA&rsquo;s. It must be submitted to Canvas by <b>11:55
+   <small>PM</small></b> on <b>Tuesday, December 7, 2021.</b>
+   Please <small>DOUBLE CHECK</small> your file <small>BEFORE AND
+   AFTER</small> you submit it, to make sure you have submitted the right
+   one.
+  </p>
+ </body>
+</html>

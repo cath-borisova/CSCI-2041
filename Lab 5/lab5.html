@@ -1,0 +1,337 @@
+<!-- Created by Bracy 0.4 on Sunday, October 10, 2021 at 8:48 PM CDT -->
+<html>
+ <head>
+  <title>
+   CSci 2041 Computer Laboratory 5
+  </title>
+  <style>
+   a:active
+    { color: purple;
+      font-weight: bold;
+      text-decoration: none }
+   a:link
+    { color: blue;
+      font-weight: bold;
+      text-decoration: none }
+   a:visited
+    { color: purple;
+      font-weight: bold;
+      text-decoration: none }
+   hr
+    { background-color: black;
+      border: none;
+      color: black;
+      height: 1px }
+   table
+    { border-collapse: collapse }
+  </style>
+ </head>
+ <body bgcolor="#FFFFFF">
+  <p align="center">
+   <b>Computer Laboratory 5</b>
+   <br />
+   <b>CS<small>CI</small> 2041: Advanced Programming Principles</b>
+   <br />
+   <b>October 11&#8211;12, 2021</b>
+  </p>
+  <p>
+   <b>0. Introduction.</b>
+  </p>
+  <p align="justify">
+   This laboratory assignment is intended to familiarize you with a style of
+   programming that will be needed for the upcoming Programming Project 1. It
+   involves using a set of <i>transformations</i> to change one expression
+   into another. Specifically, it asks you to write an OCaml function that
+   takes an expression in propositional logic as its argument, and returns a
+   new expression that is equivalent to the original one, but in which the
+   connective &lsquo;&#8744;&rsquo; (<i>or</i>) does not appear.
+  </p>
+  <p>
+   <b>1. Theory.</b>
+  </p>
+  <p align="justify">
+   Expressions in propositional logic are usually written with the connectives
+   &lsquo;&#172;&rsquo; (<i>not</i>), &lsquo;&#8743;&rsquo;
+   (<i>and</i>), &lsquo;&#8744;&rsquo; (<i>or</i>),
+   &lsquo;&#8594;&rsquo; (<i>implies</i>) and &lsquo;&#8596;&rsquo;
+   (<i>is equivalent to</i>). However, all these connectives are not
+   really necessary. It is possible to write any expression using only
+   &lsquo;&#172;&rsquo; and &lsquo;&#8743;&rsquo;, or using only
+   &lsquo;&#172;&rsquo; and &lsquo;&#8744;&rsquo;. For example, an expression
+   that uses &lsquo;&#172;&rsquo;, &lsquo;&#8743;&rsquo;, and
+   &lsquo;&#8744;&rsquo; can be written without &lsquo;&#8744;&rsquo; by
+   applying the transformations <b>1</b> and <b>2</b>, shown below.
+   The arrow &lsquo;&#8658;&rsquo; means <i>may be rewritten as.</i>
+  </p>
+  <blockquote>
+   <table cellpadding="0" cellspacing="0">
+    <tr valign="top">
+     <td>
+      <p>
+       <b>1</b>&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p align="right">
+       &#945; &#8744; &#946;
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8658;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       &#172; (&#172; &#945; &#8743; &#172; &#946;)
+      </p>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <p>
+       <b>2</b>&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p align="right">
+       &#172; &#172; &#945;
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8658;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       &#945;
+      </p>
+     </td>
+    </tr>
+   </table>
+  </blockquote>
+  <p align="justify">
+   For example, suppose we have the expression
+   &#172;&nbsp;<i>a</i>&nbsp;&#8744;&nbsp;&#172;&nbsp;<i>b</i>. We
+   use transformation <b>1</b> to rewrite it as a new expression
+   &#172;&nbsp;(&#172;&nbsp;&#172;&nbsp;<i>a</i>&nbsp;&#8743;&nbsp;&#172;&nbsp;&#172;&nbsp;<i>b</i>).
+   We then use transformation <b>2</b> twice, to rewrite the new
+   expression as &#172;&nbsp;(<i>a</i>&nbsp;&#8743;&nbsp;<i>b</i>).
+   The final expression is said to be <i>unorified</i>, which is
+   pronounced like <i>un-horrified,</i> but without the <i>h.</i>
+   (This is a fake word invented for this assignment, and used nowhere else.)
+  </p>
+  <p>
+   <b>2. Implementation.</b>
+  </p>
+  <p align="justify">
+   We can use OCaml&rsquo;s pattern matching rules to write a function that
+   unorifies expressions in propositional logic. To do that, we must first
+   define an OCaml type <tt>proposition</tt> to represent these
+   expressions:
+  </p>
+  <blockquote>
+   <p>
+    <tt>type&nbsp;proposition&nbsp;=&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;False&nbsp;|&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;True&nbsp;|&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;Var&nbsp;of&nbsp;string&nbsp;|&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;And&nbsp;of&nbsp;proposition&nbsp;&#8727;&nbsp;proposition&nbsp;|&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;Or&nbsp;of&nbsp;proposition&nbsp;&#8727;&nbsp;proposition&nbsp;|&nbsp;</tt>
+    <br />
+    <tt>&nbsp;&nbsp;Not&nbsp;of&nbsp;proposition&nbsp;;;</tt>
+   </p>
+  </blockquote>
+  <p align="justify">
+   The OCaml type <tt>proposition</tt> represents propositional
+   expressions in the following way, where the squiggly arrow
+   &lsquo;&#8605;&rsquo; means <i>is represented as.</i> It is like a
+   similar type to be discussed in the lectures, but simpler.
+  </p>
+  <blockquote>
+   <table cellpadding="0" cellspacing="0">
+    <tr valign="top">
+     <td>
+      <p align="right">
+       <i>false</i>
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8605;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       <tt>False</tt>
+      </p>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <p align="right">
+       <i>true</i>
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8605;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       <tt>True</tt>
+      </p>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <p align="right">
+       <i>a</i>, <i>b</i>, <i>c</i> ...
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8605;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       <tt>Var "a"</tt>, <tt>Var "b"</tt>, <tt>Var "c"</tt> ...
+      </p>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <p align="right">
+       &#945; &#8743; &#946;
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8605;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       <tt>And (</tt>&#945;<tt>,</tt> &#946;<tt>)</tt>
+      </p>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <p align="right">
+       &#945; &#8744; &#946;
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8605;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       <tt>Or (</tt>&#945;<tt>,</tt> &#946;<tt>)</tt>
+      </p>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <p align="right">
+       &#172; &#945;
+      </p>
+     </td>
+     <td>
+      <p align="center">
+       &nbsp;&nbsp;&#8605;&nbsp;&nbsp;
+      </p>
+     </td>
+     <td>
+      <p>
+       <tt>Not</tt> &#945;
+      </p>
+     </td>
+    </tr>
+   </table>
+  </blockquote>
+  <p align="justify">
+   Only the connectives &lsquo;&#172;&rsquo;, &lsquo;&#8743;&rsquo;, and
+   &lsquo;&#8744;&rsquo; are represented. We could have represented the
+   connectives &lsquo;&#8594;&rsquo; and &lsquo;&#8596;&rsquo; too, but they
+   would make this assignment more complicated. For example, the expression
+   &#172;&nbsp;(<i>a</i>&nbsp;&#8744;&nbsp;&#172;&nbsp;<i>b</i>) is
+   represented as an instance of the type <tt>proposition</tt> like this:
+  </p>
+  <p align="center">
+   <tt>Not (Or (Var "a", Not (Var "b")))</tt>
+  </p>
+  <p align="justify">
+   For this assignment, you must write an OCaml function called
+   <tt>unorify</tt> that takes a <tt>proposition</tt> like this as
+   its only argument. It must return a new <tt>proposition</tt> that is
+   equivalent to the original one, but in which no <tt>Or</tt>&rsquo;s
+   appear. The function <tt>unorify</tt> must do this by recursively
+   applying transformations <b>1</b> and <b>2</b> shown in the
+   previous section. Here are some hints.
+  </p>
+  <ul>
+   <li>
+   <p align="justify">
+    As stated earlier, <tt>unorify</tt> can use OCaml pattern matching
+    rules to do most of its work. The left side of each rule matches an
+    expression, and breaks it into pieces. The right side of each rule may call
+    <tt>unorify</tt> on some of the pieces, to make new pieces. Then it
+    puts the pieces back together to return a new, equivalent expression, but
+    without any <tt>Or</tt>&rsquo;s.
+   </p>
+   <li>
+   <p align="justify">
+    There is probably no way to make <tt>unorify</tt> completely
+    tail-recursive.
+   </p>
+   <li>
+   <p align="justify">
+    One way to write <tt>unorify</tt> uses seven or eight pattern matching
+    rules. Some of the rules handle expressions involving <tt>And</tt>,
+    <tt>Or</tt>, <tt>Not</tt>, with an extra rule to handle
+    everything else. The other rules will handle expressions that are prefixed
+    by <tt>Not</tt>&rsquo;s. (This hint may make more sense after
+    you&rsquo;ve started writing code.)
+   </p>
+   <li>
+   <p align="justify">
+    My definition for <tt>unorify</tt> is approximately 11 lines of
+    recursive OCaml code. Yours may be longer or shorter, depending on how
+    clever you are, and how you like to indent.
+   </p>
+  </ul>
+  <p>
+   <b>3. Deliverables.</b>
+  </p>
+  <p align="justify">
+   The file
+   <a href="tests5.ml">
+    <tt>tests5.ml</tt>
+   </a>
+   contains some tests. It also contains the definition of the type
+   <tt>proposition</tt> shown above. Insert your code into this file, and
+   then run it with OCaml. Note that unlike previous test files, you must write
+   the tests yourself, translating from propositional logic expressions into
+   instances of the OCaml type <tt>proposition</tt>. This is to help you
+   become accustomed to OCaml&rsquo;s constructor notation, which may be
+   unfamiliar.
+   <br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; When you think your code is correct, then
+   submit the test file with your code in it. If you don&rsquo;t know how and
+   where to submit your work, then ask your lab TA&rsquo;s. It must be
+   submitted by <b>11:55 <small>PM</small></b> on <b>Tuesday,
+   October 19, 2021</b>.
+  </p>
+ </body>
+</html>
